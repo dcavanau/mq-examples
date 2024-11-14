@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<server description="new server">
+<server description="mqhttp">
 
     <featureManager>
         <feature>jakartaee-9.1</feature>
@@ -8,8 +8,8 @@
     <!-- START JMS CONFIGURATION -->
 
     <!-- Real projects should make it secure -->
-    <variable name="ibmmq.username" value="app"/>
-    <variable name="ibmmq.password" value="passw0rd"/>
+    <variable name="ibmmq.username" value="app" />
+    <variable name="ibmmq.password" value="passw0rd" />
 
     <resourceAdapter id="wmqjmsra" location="${wlp.install.dir}../../../ibm/wmq.jakarta.jmsra.rar" />
 
@@ -25,7 +25,7 @@
         />
     </jmsConnectionFactory>
 
-    <connectionManager id="ConMgr6" maxPoolSize="10"/>
+    <connectionManager id="ConMgr6" maxPoolSize="10" />
 
     <jmsActivationSpec id="libertymq/SampleListenerMDB">
         <properties.wmqjmsra
@@ -39,7 +39,7 @@
             destinationRef="jms/queue1"
             destinationType="jakarta.jms.Queue"
         />
-	</jmsActivationSpec>
+    </jmsActivationSpec>
 
     <jmsQueue id="jms/queue1" jndiName="jms/queue1">
         <properties.wmqjmsra baseQueueName="DEV.QUEUE.1" />
@@ -51,11 +51,11 @@
     <basicRegistry id="basic" realm="BasicRealm" />
 
     <httpEndpoint id="defaultHttpEndpoint"
-                  httpPort="9080"
-                  httpsPort="9443"
-                  host="*" />
+        httpPort="9080"
+        httpsPort="9443"
+        host="*" />
 
-    <applicationManager autoExpand="true"/>
+    <applicationManager autoExpand="true" />
 
     <webApplication contextRoot="/libertymq" location="libertymq.war" />
 
