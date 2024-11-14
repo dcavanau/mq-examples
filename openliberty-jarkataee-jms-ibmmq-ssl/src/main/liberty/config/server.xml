@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="mqhttp">
+
+    <featureManager>
+        <feature>jakartaee-9.1</feature>
+    </featureManager>
+
+    <!-- START JMS CONFIGURATION -->
+
+    <!-- Real projects should make it secure -->
+    <variable name="ibmmq.username" value="app" />
+    <variable name="ibmmq.password" value="passw0rd" />
+    <variable name="keystore.password" value="passw0rd" />
+    <variable name="truststore.password" value="passw0rd" />
+
+    <resourceAdapter id="wmqjmsra" location="${wlp.install.dir}../../../ibm/wmq.jmsra.rar" />
+
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" sslProtocol="TLSv1.2" />
+    <keyStore id="defaultKeyStore" location="${wlp.install.dir}../../../ibm/keystore.p12"
+        password="${keystore.password}" type="PKCS12" />
+    <keyStore id="defaultTrustStore" location="${wlp.install.dir}../../../ibm/keystore.p12"
+        password="${truststore.password}" type="PKCS12" />
+
+    <ssl id="mqv9_ssl_settings"
+        verifyHostname="false"
+        keyStoreRef="defaultKeyStore"
+        securityLevel="CUSTOM"
+        serverKeyAlias="default"
+        sslProtocol="TLSv1.2"
+        enabledCiphers="TLS_RSA_WITH_AES_256_CBC_SHA256"
+        trustStoreRef="defaultTrustStore">
+
+        <outboundConnection clientCertificate="default"
+            host="localhost"
+            port="1414" />
+
+    </ssl>
+
+    <jmsConnectionFactory jndiName="jms/wmqCF" connectionManagerRef="ConMgr6">
+        <properties.wmqjmsra
+            channel="DEV.APP.SVRCONN"
+            hostName="localhost"
+            port="1414"
+            userName="${ibmmq.username}"
+            password="${ibmmq.password}"
+            queueManager="QM1"
+            transportType="CLIENT"
+            sslCipherSuite="TLS_RSA_WITH_AES_256_CBC_SHA256"
+            sslConfiguration="mqv9_ssl_settings"
+        />
+    </jmsConnectionFactory>
+
+    <connectionManager id="ConMgr6" maxPoolSize="10" />
+
+    <jmsActivationSpec id="libertymq/SampleListenerMDB">
+        <properties.wmqjmsra
+            channel="DEV.APP.SVRCONN"
+            hostName="localhost"
+            port="1414"
+            userName="${ibmmq.username}"
+            password="${ibmmq.password}"
+            queueManager="QM1"
+            transportType="CLIENT"
+            destinationRef="jms/queue1"
+            destinationType="jakarta.jms.Queue"
+        />
+    </jmsActivationSpec>
+
+    <jmsQueue id="jms/queue1" jndiName="jms/queue1">
+        <properties.wmqjmsra baseQueueName="DEV.QUEUE.1" />
+    </jmsQueue>
+
+    <!-- END JMS CONFIGURATION -->
+
+
+    <basicRegistry id="basic" realm="BasicRealm" />
+
+    <httpEndpoint id="defaultHttpEndpoint"
+        httpPort="9080"
+        httpsPort="9443"
+        host="*" />
+
+    <applicationManager autoExpand="true" />
+
+    <webApplication contextRoot="/libertymq" location="libertymq.war" />
+
+    <ssl id="defaultSSLConfig" trustDefaultCerts="true" />
+</server>
