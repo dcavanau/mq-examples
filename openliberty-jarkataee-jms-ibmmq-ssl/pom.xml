@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>libertymqssl</groupId>
+    <groupId>libertymq</groupId>
     <artifactId>libertymqssl</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>war</packaging>
@@ -32,13 +32,11 @@
             <version>9.1.0</version>
             <scope>provided</scope>
         </dependency>
-
-        <!-- For localhost simple testing, not required -->
         <dependency>
             <groupId>com.ibm.mq</groupId>
             <artifactId>com.ibm.mq.allclient</artifactId>
-            <version>9.3.0.0</version>
-            <scope>test</scope>
+            <version>9.4.1.0</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
