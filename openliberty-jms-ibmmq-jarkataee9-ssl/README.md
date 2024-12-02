@@ -111,12 +111,12 @@ For this project you'll need to install the following requirements:
      --volume qmdata:/mnt/mqm \
      --publish 1414:1414 \
      --publish 1419:1419 \
-     --publish 9443:9443 \
+     --publish 8443:9443 \
      --detach \
      --env MQ_APP_PASSWORD=passw0rd \
      --env MQ_TLS_KEYSTORE=/mnt/mqm/MQServer/certs/key.p12 \
      --env MQ_TLS_PASSPHRASE=k3ypassw0rd \
-     --name QM1
+     --name QM1 \
      ibmcom/mq:latest
    ```
 
@@ -179,7 +179,7 @@ For this project you'll need to install the following requirements:
    >
    ```
 
-7. Leave the container running and stsay in the container command line prompt. It will be needed for the next section.
+7. Leave the container running and stay in the container command line prompt. It will be needed for the next section.
 
 ## Set up client truststore
 
@@ -238,7 +238,7 @@ For this project you'll need to install the following requirements:
 
    ```sh
    cd ~/mq-examples/openliberty-jarkataee-jms-ibmmq-ssl/src/main/resources/security
-   
+
    podman cp QM1:/mnt/mqm/MQClient/certs/client_key.p12 client_key.p12
    ```
 
