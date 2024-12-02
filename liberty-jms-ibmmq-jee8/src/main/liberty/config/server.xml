@@ -2,12 +2,13 @@
 <server description="mqhttp">
 
     <featureManager>
-        <feature>jndi-1.0</feature>
+        <!-- <feature>jndi-1.0</feature>
         <feature>servlet-3.1</feature>
         <feature>jms-2.0</feature>
         <feature>jca-1.7</feature>
-        <feature>transportSecurity-1.0</feature>
-      </featureManager>
+        <feature>transportSecurity-1.0</feature> -->
+        <feature>javaee-8.0</feature>
+    </featureManager>
 
     <!-- START JMS CONFIGURATION -->
 
@@ -15,10 +16,12 @@
     <variable name="ibmmq.username" value="app" />
     <variable name="ibmmq.password" value="passw0rd" />
 
-    <resourceAdapter id="wmqjmsra" location="${wlp.install.dir}../../../ibm/wmq.jmsra.rar" />
+    <resourceAdapter id="mqJms" location="${server.config.dir}/wmq.jmsra.rar">
+        <classloader apiTypeVisibility="spec, ibm-api, api, third-party" />
+    </resourceAdapter>
 
     <jmsConnectionFactory jndiName="jms/wmqCF" connectionManagerRef="ConMgr6">
-        <properties.wmqjmsra
+        <properties.mqJms
             channel="DEV.APP.SVRCONN"
             hostName="localhost"
             port="1414"
@@ -32,7 +35,7 @@
     <connectionManager id="ConMgr6" maxPoolSize="10" />
 
     <jmsActivationSpec id="libertymq/SampleListenerMDB">
-        <properties.wmqjmsra
+        <properties.mqJms
             channel="DEV.APP.SVRCONN"
             hostName="localhost"
             port="1414"
@@ -41,12 +44,13 @@
             queueManager="QM1"
             transportType="CLIENT"
             destinationRef="jms/queue1"
-            destinationType="jakarta.jms.Queue"
+            destinationType="javax.jms.Queue"
         />
     </jmsActivationSpec>
 
     <jmsQueue id="jms/queue1" jndiName="jms/queue1">
-        <properties.wmqjmsra baseQueueName="DEV.QUEUE.1" />
+        <properties.mqJms 
+            baseQueueName="DEV.QUEUE.1" />
     </jmsQueue>
 
     <!-- END JMS CONFIGURATION -->
@@ -61,7 +65,7 @@
 
     <applicationManager autoExpand="true" />
 
-    <webApplication contextRoot="/libertymq8" location="libertymq8.war" />
+    <webApplication contextRoot="/libertymq" location="libertymq.war" />
 
     <ssl id="defaultSSLConfig" trustDefaultCerts="true" />
 </server>

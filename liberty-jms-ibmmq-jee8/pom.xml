@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>libertymq</groupId>
-    <artifactId>libertymq8</artifactId>
+    <artifactId>libertymq</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>war</packaging>
 
@@ -27,27 +29,16 @@
 
     <dependencies>
         <dependency>
-            <groupId>jakarta.platform</groupId>
-            <artifactId>jakarta.jakartaee-api</artifactId>
-            <version>8.0.0</version>
-            <scope>provided</scope>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+            <version>8.0</version>
         </dependency>
 
-
-        <dependency>
-            <groupId>org.eclipse.microprofile</groupId>
-            <artifactId>microprofile</artifactId>
-            <version>4.1</version>
-            <type>pom</type>
-            <scope>provided</scope>
-        </dependency>       
-
-        <!-- For localhost simple testing, not required -->
         <dependency>
             <groupId>com.ibm.mq</groupId>
             <artifactId>com.ibm.mq.allclient</artifactId>
-            <version>9.3.0.0</version>
-            <scope>test</scope>
+            <version>9.4.1.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -58,7 +49,7 @@
     </dependencies>
 
     <build>
-        <finalName>libertymq8</finalName>
+        <finalName>libertymq</finalName>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -70,7 +61,7 @@
                     <groupId>io.openliberty.tools</groupId>
                     <artifactId>liberty-maven-plugin</artifactId>
                     <version>3.11.1</version>
-               </plugin>
+                </plugin>
                 <!-- JUnit 5 requires Surefire version 2.22.0 or higher -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
