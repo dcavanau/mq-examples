@@ -3,11 +3,6 @@
 
     <featureManager>
         <feature>jakartaee-9.1</feature>
-        <feature>jndi-1.0</feature>
-        <feature>servlet-3.1</feature>
-        <feature>jms-2.0</feature>
-        <feature>jca-1.7</feature> 
-        <feature>transportSecurity-1.0</feature>
     </featureManager>
 
     <!-- START JMS CONFIGURATION -->
@@ -31,11 +26,11 @@
          clientAuthenticationSupported="false"
          sslProtocol="TLSv1.2" />
     <keyStore id="defaultKeyStore" 
-              location="key.p12"
+              location="client_key.p12"
               password="${keystore.password}" 
               type="PKCS12" />
     <keyStore id="defaultTrustStore" 
-              location="key.p12"
+              location="client_key.p12"
               password="${truststore.password}" 
               type="PKCS12" />
 
