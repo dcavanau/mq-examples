@@ -6,8 +6,8 @@ A sample application that uses Open Liberty to connect to IBM MQ to enqueue & de
 
 For this project you'll need to install the following requirements:
 
-- JDK 17 (or later) - E.g. [Temurim](https://adoptium.net/installation/linux)
-- Latest Maven, it must be Java 17 compatible - <https://maven.apache.org/install.html>
+- JDK 1.8 (or later) - E.g. [Temurim](https://adoptium.net/installation/linux)
+- Latest Maven, it must be Java 1.8 compatible - <https://maven.apache.org/install.html>
 - Podman
 
 ## Running it

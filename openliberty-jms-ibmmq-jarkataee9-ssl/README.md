@@ -171,7 +171,22 @@ For this project you'll need to install the following requirements:
 
    The other property to note is **SSLCAUTH**, which is set to **OPTIONAL** in this case. This allows for both 1-Way and 2-Way TLS authentication. The server authentication by the client is mandatory so the server always needs a certificate. This is 1-Way authentication. If the client also has a certificate, 2-way authentication can happen. If a client provides a certificate then it will be used for authentication, however if it does not then client authentication does not happen but the connection is still allowed. We are using 1-Way authentication in this tutorial as only the server has a certificate, so our TLS configuration is set up for encryption and server authentication only. The client authentication is carried out separately using the application name and password.
 
-6. End the MQSC interface
+6. Define the MQ Listener for the SSL PORT and start it
+
+   ```sh
+   define listener(LISTENER) trptype(TCP) control(QMGR) port(1419)
+   start listener(LISTENER)
+   display lsstatus(*) port
+
+   AMQ8631I: Display listener status details.
+      LISTENER(SYSTEM.LISTENER.TCP.1)         STATUS(RUNNING)
+      PID(255)                                PORT(1414)
+   AMQ8631I: Display listener status details.
+      LISTENER(LISTENER)                      STATUS(RUNNING)
+      PID(428)                                PORT(1419)
+   ```
+
+7. End the MQSC interface
 
    ```sh
    END
@@ -179,7 +194,7 @@ For this project you'll need to install the following requirements:
    >
    ```
 
-7. Leave the container running and stay in the container command line prompt. It will be needed for the next section.
+8. Leave the container running and stay in the container command line prompt. It will be needed for the next section.
 
 ## Set up client truststore
 

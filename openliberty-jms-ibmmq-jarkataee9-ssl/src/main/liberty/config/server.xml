@@ -2,7 +2,7 @@
 <server description="mqhttp">
 
     <featureManager>
-        <feature>javaee-8.0</feature>
+        <feature>jakartaee-9.1</feature>
         <feature>jndi-1.0</feature>
         <feature>servlet-3.1</feature>
         <feature>jms-2.0</feature>
@@ -18,7 +18,7 @@
     <variable name="keystore.password" value="tru5tpassw0rd" />
     <variable name="truststore.password" value="tru5tpassw0rd" />
 
-    <resourceAdapter id="mqjms" location="${server.config.dir}/wmq.jmsra.rar">
+    <resourceAdapter id="wmqjmsra" location="${server.config.dir}//wmq.jakarta.jmsra.rar">
         <classloader apiTypeVisibility="spec, ibm-api, api, third-party"/>
     </resourceAdapter>
 
@@ -45,7 +45,8 @@
         securityLevel="CUSTOM"
         serverKeyAlias="ibmwebspheremqqm1"
         sslProtocol="TLSv1.2"
-        trustStoreRef="defaultTrustStore">
+        trustStoreRef="defaultTrustStore"
+        trustDefaultCerts="true" >
 
         <outboundConnection 
             host="localhost"
@@ -55,9 +56,9 @@
 
     <jmsConnectionFactory jndiName="jms/wmqCF" connectionManagerRef="ConMgr6">
         <properties.wmqjmsra
-            channel="DEV.APP.SVRCONN"
+            channel="DEV.SSL.SVRCONN"
             hostName="localhost"
-            port="1414"
+            port="1419"
             userName="${ibmmq.username}"
             password="${ibmmq.password}"
             queueManager="QM1"
@@ -69,9 +70,9 @@
 
     <jmsActivationSpec id="libertymq/SampleListenerMDB">
         <properties.wmqjmsra
-            channel="DEV.APP.SVRCONN"
+            channel="DEV.SSL.SVRCONN"
             hostName="localhost"
-            port="1414"
+            port="1419"
             userName="${ibmmq.username}"
             password="${ibmmq.password}"
             queueManager="QM1"
