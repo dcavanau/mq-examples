@@ -116,7 +116,7 @@ For this project you'll need to install the following requirements:
      --env MQ_APP_PASSWORD=passw0rd \
      --env MQ_TLS_KEYSTORE=/mnt/mqm/MQServer/certs/key.p12 \
      --env MQ_TLS_PASSPHRASE=k3ypassw0rd \
-     --name QM1 \
+     --name QM1 \re
      ibmcom/mq:latest
    ```
 

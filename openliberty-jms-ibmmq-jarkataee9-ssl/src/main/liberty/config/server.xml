@@ -14,25 +14,26 @@
     <variable name="truststore.password" value="tru5tpassw0rd" />
 
     <resourceAdapter id="wmqjmsra" location="${server.config.dir}//wmq.jakarta.jmsra.rar">
-        <classloader apiTypeVisibility="spec, ibm-api, api, third-party"/>
+        <classloader apiTypeVisibility="spec, ibm-api, api, third-party" />
     </resourceAdapter>
 
     <!-- default SSL Configuration -->
     <sslDefault sslRef="defaultSSLConfig" />
 
-    <ssl id="defaultSSLConfig" 
-         keyStoreRef="defaultKeyStore" 
-         trustStoreRef="defaultTrustStore" 
-         clientAuthenticationSupported="false"
-         sslProtocol="TLSv1.2" />
-    <keyStore id="defaultKeyStore" 
-              location="client_key.p12"
-              password="${keystore.password}" 
-              type="PKCS12" />
-    <keyStore id="defaultTrustStore" 
-              location="client_key.p12"
-              password="${truststore.password}" 
-              type="PKCS12" />
+    <ssl id="defaultSSLConfig"
+        keyStoreRef="defaultKeyStore"
+        trustStoreRef="defaultTrustStore"
+        sslProtocol="TLSv1.2" />
+
+    <keyStore id="defaultKeyStore"
+        location="client_key.p12"
+        password="${keystore.password}"
+        type="PKCS12" />
+
+    <keyStore id="defaultTrustStore"
+        location="client_key.p12"
+        password="${truststore.password}"
+        type="PKCS12" />
 
     <ssl id="mqv9_ssl_settings"
         verifyHostname="false"
@@ -40,10 +41,12 @@
         securityLevel="CUSTOM"
         serverKeyAlias="ibmwebspheremqqm1"
         sslProtocol="TLSv1.2"
+        enabledCiphers="TLS_RSA_WITH_AES_256_CBC_SHA256"
         trustStoreRef="defaultTrustStore"
-        trustDefaultCerts="true" >
+        trustDefaultCerts="true">
 
-        <outboundConnection 
+        <outboundConnection
+            clientCertificate="default"
             host="localhost"
             port="1414" />
 
@@ -58,6 +61,7 @@
             password="${ibmmq.password}"
             queueManager="QM1"
             transportType="CLIENT"
+            sslCipherSuite="TLS_RSA_WITH_AES_256_CBC_SHA256"
             sslConfiguration="mqv9_ssl_settings" />
     </jmsConnectionFactory>
 
