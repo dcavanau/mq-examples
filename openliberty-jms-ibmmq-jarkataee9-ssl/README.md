@@ -103,121 +103,23 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
    ```sh
    podman rm mq-tls-config-container
    ```
-## Hold here
-1. Pull and start the IBM MQ docker container:
+
+7. Start the MQ server and verify operation
 
    ```sh
-   podman volume create qm1data
-
-   podman pull icr.io/ibm-messaging/mq:latest
-
-   podman run -ti \
-     --entrypoint=/bin/bash \
-     --volume qm1data:/mnt/mqm \
-     icr.io/ibm-messaging/mq:latest
+      podman run -it \
+         --name mqtls \
+         --secret mqAdminPassword \
+         --secret mqAppPassword \
+         --env LICENSE=accept \
+         --env MQ_QMGR_NAME=QM1 \
+         --volume tls-key-vol:/etc/mqm/pki/keys/mykey" \
+         --volume qmdata:/mnt/mqm \
+         --publish 1414:1414 \
+         --publish 8443:9443 \
+         --detach \ 
+         icr.io/ibm-messaging/mq:latest
    ```
-
-2. Change to the directory that is mounted on the volume to create digital certificates for the server
-
-   ```sh
-   cd /mnt/mqm
-   mkdir -p MQServer/certs
-   cd MQServer/certs
-   ```
-
-3. Create a key database (also called the keyStore or certificate store), then add and stash the password for it
-
-   ```sh
-   runmqakm -keydb -create -db key.p12 -pw k3ypassw0rd -type pkcs12 -expire 1000 -stash
-   ```
-
-4. Check what has been created so far
-
-   ```sh
-   ls
-    > key.p12  key.sth
-   ```
-
-5. Check the contents of the keyStore
-
-   ```sh
-   runmqakm -cert -list all -db key.p12 -stashed
-   > No certificates were found.
-   ```
-
-6. Create a self signed certificate
-
-   ```sh
-   runmqakm -cert -create -db key.p12 -label ibmwebspheremqqm1 -dn "cn=QM1,o=IBM,c=US" -size 2048 -default_cert yes -stashed
-   ```
-
-7. Check the contents of the keyStore
-
-   ```sh
-   runmqakm -cert -list all -db key.p12 -stashed
-   > Certificates found
-     * default, - personal, ! trusted, # secret key
-     - ibmwebspheremqqm1
-   
-   runmqckm -cert -details -db key.p12 -stashed -label ibmwebspheremqqm1
-
-   Label: ibmwebspheremqqm1
-   Key Size: 2048
-   Version: X509 V3
-   Serial Number: 62 FC 03 BB 06 B5 5C 82
-   Issued by: CN=QM1, O=IBM, C=US
-   Subject: CN=QM1, O=IBM, C=US
-   Valid: From: Sunday, December 8, 2024 5:38:09 PM GMT To: Tuesday, December 9, 2025 5:38:09 PM GMT
-   Fingerprint:
-       SHA1: B5:A1:12:25:29:17:3D:75:D0:57:CE:00:B0:59:27:92:82:4B:49:13
-       SHA256: 43:59:56:3B:00:35:BC:A4:07:9D:73:28:EA:DB:A9:D1:1C:EF:72:EA:26:25:AD:F4:40:7E:F0:D0:24:8A:6E:D9
-       HPKP: 9tVfesE135JZgWAXw5OO3TWe3p2EDXvOI1FS7G87atg=
-
-
-   Extensions:
-     - AuthorityKeyIdentifier: ObjectId: 2.5.29.35 Criticality=false
-   AuthorityKeyIdentifier [
-   KeyIdentifier [
-   0000: 40 0e 02 2c 09 71 7d ba  6e de 5f 9d ce 11 e9 e8  .....q..n.......
-   0010: 7b 90 4f d8                                        ..O.
-   ]
-   ]
-
-     - SubjectKeyIdentifier: ObjectId: 2.5.29.14 Criticality=false
-   SubjectKeyIdentifier [
-   KeyIdentifier [
-   0000: 40 0e 02 2c 09 71 7d ba  6e de 5f 9d ce 11 e9 e8  .....q..n.......
-   0010: 7b 90 4f d8                                        ..O.
-   ]
-   ]
-
-   Signature Algorithm: SHA256withRSA (1.2.840.113549.1.1.11)
-   Trust Status: enabled
-    ```
-
-8. Extract public-key for client to communicate with the Queue Manager
-
-   ```sh
-   runmqakm -cert -extract -db key.p12 -stashed -label ibmwebspheremqqm1 -target QM1.cert
-   ```
-
-9. Check what has been created so far
-
-   ```sh
-   ls
-    > QM1.cert  key.p12  key.sth
-   ```
-
-10. Exit the container. The certificate data will be safe in the volume
-
-    ```sh
-    exit
-    podman container ls --all
-    > CONTAINER ID  IMAGE                           COMMAND     CREATED         STATUS                     PORTS                                   NAMES
-      1d57f8d01b9b  icr.io/ibm-messaging/mq:latest              24 minutes ago  Exited (0) 27 seconds ago  1414/tcp, 9157/tcp, 9415/tcp, 9443/tcp  great_einstein
-    podman container rm 1d57f8d01b9b
-    > 1d57f8d01b9b
-    ```
 
 ## MQ Queue Manager configuration in container
 
