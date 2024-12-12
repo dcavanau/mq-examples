@@ -2,34 +2,118 @@
 
 A sample application that uses Open Liberty to connect via SSL to IBM MQ to enqueue & dequeue messages. This example uses *1-way authentication*.
 
-The default behavior for the MQ Client application is to ask for the authentication of the
-MQ queue manager, this is called *1-way authentication*. This is accomplished by specifying **SSLCAUTH(OPTIONAL)** in the definition of the channel.
+The default behavior for the MQ Client application is to ask for the authentication of the MQ queue manager, this is called *1-way authentication*. This is accomplished by specifying **SSLCAUTH(OPTIONAL)** in the definition of the channel.
 
 The method of *2-way authentication* is when additionally, the MQ queue manager asks for the authentication of the MQ Client application. This is accomplished by specifying **SSLCAUTH(REQUIRED)** in the definition of the channel.
 
 Self-signed certificates are used in this example. Self-signed TLS certificates are suitable for personal use or for applications that are used internally within an organization. Self-signed certificates are **NOT** suitable for software used by external users or high-risk or Production environments because the certificates cannot be verified with a Certification
 Authority (CA).
 
+## MQ Container Default Configuration
+
+The following users are created:
+
+* User **admin** for administration. This user is created only if the password is set. Secrets must be used to set the password.
+* User **app** for messaging (in a group called `mqclient`). This user is created only if the password is set. Secrets must be used to set the password.
+
+Users in `mqclient` group have been given access connect to all queues and topics starting with `DEV.**` and have `put`, `get`, `pub`, `sub`, `browse` and `inq` permissions.
+
+The following queues and topics are created:
+
+* DEV.QUEUE.1
+* DEV.QUEUE.2
+* DEV.QUEUE.3
+* DEV.DEAD.LETTER.QUEUE - configured as the Queue Manager's Dead Letter Queue.
+* DEV.BASE.TOPIC - uses a topic string of `dev/`.
+
+Two channels are created, one for administration, the other for normal messaging:
+
+* DEV.ADMIN.SVRCONN - configured to only allow the `admin` user to connect into it. The admin user can be used with the password configured via secret.
+* DEV.APP.SVRCONN - does not allow administrative users to connect. Only the `app` user can connect. The password would be as configured by the secret.
+
 ## Setup
 
 For this project you'll need to install the following requirements:
 
-- JDK 17 (or later) - E.g. [Temurim](https://adoptium.net/installation/linux)
-- Latest Maven, it must be Java 17 compatible - <https://maven.apache.org/install.html>
-- Podman
+* JDK 17 (or later) - E.g. [Temurim](https://adoptium.net/installation/linux)
+* Latest Maven, it must be Java 17 compatible - <https://maven.apache.org/install.html>
+* Podman
+* Jakarta EE 9.1
+* OpenLiberty 22.0.0.7
+* IBM MQ & Resource Adapter 9.4.1.0
+* OpenSSL
+* MQ Client Libraries for local machine
+
+## Set up password secrets
+
+Create podman secrets with secret names as “mqAdminPassword” & "mqAppPassword":
+
+* `printf "passw0rd" | podman secret create mqAdminPassword -`
+* `printf "passw0rd" | podman secret create mqAppPassword -`
 
 ## Set Up MQ Server keystore and certificate
 
+1. Create the self signed certificate on the local machine
+
+   ```sh
+   mkdir qm1cert
+   cd qm1cert
+
+   openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -keyout QM1.key -out QM1.crt -subj "/C=US/O=IBM/CN=QM1" -nodes
+   ls
+
+      QM1.crt QM1.key
+
+   openssl x509 -text -noout -in QM1.crt
+   ```
+
+2. Create the keystore to use on the OpenLiberty client (local machine)
+
+   ```sh
+   runmqakm -keydb -create -db clientkey.kdb -pw k3ypassw0rd -type pkcs12 -expire 1000 -stash
+   ```
+
+3. Import the MQ Server's public key into the client keystore
+
+   ```sh
+   runmqakm -cert -add -label QM1.cert -db clientkey.kdb -stashed -trust enable -file QM1.crt
+
+   runmqakm -cert -list all -db clientkey.kdb -stashed
+
+      Certificates found
+   * default, - personal, ! trusted, # secret key
+   !  QM1.cert
+   ```
+
+4. Create a non-running container which creates and mounts a volume onto the container
+
+   ```sh
+   podman create --name mq-tls-config-container --mount="type=volume,src=tls-key-vol,dst=/etc/mqm/pki/keys/mykey" --user 0:0 icr.io/ibm-messaging/mq:latest
+   ```
+
+5. Copy the QM1 `.key` and `.crt` files to the directory in the container
+
+   ```sh
+   podman cp QM1.crt mq-tls-config-container:/etc/mqm/pki/keys/QM1.cert
+   podman cp QM1.key mq-tls-config-container:/etc/mqm/pki/keys/QM1.cert
+   ```
+
+6. Remove the container
+
+   ```sh
+   podman rm mq-tls-config-container
+   ```
+## Hold here
 1. Pull and start the IBM MQ docker container:
 
    ```sh
-   podman volume create qmdata
+   podman volume create qm1data
 
    podman pull icr.io/ibm-messaging/mq:latest
 
    podman run -ti \
      --entrypoint=/bin/bash \
-     --volume qmdata:/mnt/mqm \
+     --volume qm1data:/mnt/mqm \
      icr.io/ibm-messaging/mq:latest
    ```
 
@@ -64,7 +148,7 @@ For this project you'll need to install the following requirements:
 6. Create a self signed certificate
 
    ```sh
-   runmqakm -cert -create -db key.p12 -label ibmwebspheremqqm1 -dn "cn=qm,o=ibm,c=us" -size 2048 -default_cert yes -stashed
+   runmqakm -cert -create -db key.p12 -label ibmwebspheremqqm1 -dn "cn=QM1,o=IBM,c=US" -size 2048 -default_cert yes -stashed
    ```
 
 7. Check the contents of the keyStore
@@ -74,7 +158,42 @@ For this project you'll need to install the following requirements:
    > Certificates found
      * default, - personal, ! trusted, # secret key
      - ibmwebspheremqqm1
-   ```
+   
+   runmqckm -cert -details -db key.p12 -stashed -label ibmwebspheremqqm1
+
+   Label: ibmwebspheremqqm1
+   Key Size: 2048
+   Version: X509 V3
+   Serial Number: 62 FC 03 BB 06 B5 5C 82
+   Issued by: CN=QM1, O=IBM, C=US
+   Subject: CN=QM1, O=IBM, C=US
+   Valid: From: Sunday, December 8, 2024 5:38:09 PM GMT To: Tuesday, December 9, 2025 5:38:09 PM GMT
+   Fingerprint:
+       SHA1: B5:A1:12:25:29:17:3D:75:D0:57:CE:00:B0:59:27:92:82:4B:49:13
+       SHA256: 43:59:56:3B:00:35:BC:A4:07:9D:73:28:EA:DB:A9:D1:1C:EF:72:EA:26:25:AD:F4:40:7E:F0:D0:24:8A:6E:D9
+       HPKP: 9tVfesE135JZgWAXw5OO3TWe3p2EDXvOI1FS7G87atg=
+
+
+   Extensions:
+     - AuthorityKeyIdentifier: ObjectId: 2.5.29.35 Criticality=false
+   AuthorityKeyIdentifier [
+   KeyIdentifier [
+   0000: 40 0e 02 2c 09 71 7d ba  6e de 5f 9d ce 11 e9 e8  .....q..n.......
+   0010: 7b 90 4f d8                                        ..O.
+   ]
+   ]
+
+     - SubjectKeyIdentifier: ObjectId: 2.5.29.14 Criticality=false
+   SubjectKeyIdentifier [
+   KeyIdentifier [
+   0000: 40 0e 02 2c 09 71 7d ba  6e de 5f 9d ce 11 e9 e8  .....q..n.......
+   0010: 7b 90 4f d8                                        ..O.
+   ]
+   ]
+
+   Signature Algorithm: SHA256withRSA (1.2.840.113549.1.1.11)
+   Trust Status: enabled
+    ```
 
 8. Extract public-key for client to communicate with the Queue Manager
 
@@ -106,6 +225,8 @@ For this project you'll need to install the following requirements:
 
    ```sh
    podman run \
+     --secret mqAdminPassword \
+     --secret mqAppPassword \
      --env LICENSE=accept \
      --env MQ_QMGR_NAME=QM1 \
      --volume qmdata:/mnt/mqm \
@@ -113,11 +234,8 @@ For this project you'll need to install the following requirements:
      --publish 1419:1419 \
      --publish 8443:9443 \
      --detach \
-     --env MQ_APP_PASSWORD=passw0rd \
-     --env MQ_TLS_KEYSTORE=/mnt/mqm/MQServer/certs/key.p12 \
-     --env MQ_TLS_PASSPHRASE=k3ypassw0rd \
-     --name QM1 \re
-     ibmcom/mq:latest
+     --name QM1 \
+     icr.io/ibm-messaging/mq:latest
    ```
 
 2. Enter the container
@@ -138,7 +256,7 @@ For this project you'll need to install the following requirements:
 
    ```sh
    DEFINE CHANNEL('DEV.SSL.SVRCONN') CHLTYPE(SVRCONN) TRPTYPE(TCP) +
-   SSLCIPH(ANY_TLS12_OR_HIGHER) +
+   SSLCIPH('ANY_TLS12_OR_HIGHER') +
    SSLCAUTH(OPTIONAL) +
    SSLPEER('') REPLACE
 
@@ -174,15 +292,15 @@ For this project you'll need to install the following requirements:
 6. Define the MQ Listener for the SSL PORT and start it
 
    ```sh
-   define listener(LISTENER) trptype(TCP) control(QMGR) port(1419)
-   start listener(LISTENER)
+   define listener(SYSTEM.LISTENER.TCP.2) trptype(TCP) control(QMGR) port(1419)
+   start listener(SYSTEM.LISTENER.TCP.2)
    display lsstatus(*) port
 
    AMQ8631I: Display listener status details.
       LISTENER(SYSTEM.LISTENER.TCP.1)         STATUS(RUNNING)
       PID(255)                                PORT(1414)
    AMQ8631I: Display listener status details.
-      LISTENER(LISTENER)                      STATUS(RUNNING)
+      LISTENER(LISTENER.TCP.2)                STATUS(RUNNING)
       PID(428)                                PORT(1419)
    ```
 
@@ -229,7 +347,7 @@ For this project you'll need to install the following requirements:
 5. Add the public key certificate to the client’s trustStore
 
    ```sh
-   runmqakm -cert -add -label QM1.cert -db client_key.p12 -type pkcs12 -pw tru5tpassw0rd -trust enable -file ../../MQServer/certs/QM1.cert
+   runmqakm -cert -add -label ibmwebspheremqqm1 -db client_key.p12 -type pkcs12 -pw tru5tpassw0rd -trust enable -file ../../MQServer/certs/QM1.cert
    ```
 
 6. Check the contents of the keyStore
@@ -238,7 +356,7 @@ For this project you'll need to install the following requirements:
    runmqakm -cert -list all -db client_key.p12 -pw tru5tpassw0rd
    > Certificates found
    * default, - personal, ! trusted, # secret key
-   ! QM1.cert
+   ! ibmwebspheremqqm1
    ```
 
 7. Exit the Queue Manager container. Be sure to leave the container running.
@@ -252,7 +370,7 @@ For this project you'll need to install the following requirements:
 1. From the host command line prompt, copy the client truststore from the queue manager container to the application'sresource directory
 
    ```sh
-   cd ~/mq-examples/openliberty-jarkataee-jms-ibmmq-ssl/src/main/resources/security
+   cd ~/mq-examples/openliberty-jms-ibmmq-jarkataee9-ssl/src/main/liberty/config/resources/security
 
    podman cp QM1:/mnt/mqm/MQClient/certs/client_key.p12 client_key.p12
    ```
@@ -270,25 +388,4 @@ Once the server is running, send a message to the queue:
 
 ```sh
 curl -X POST -d 'msg=test message' http://localhost:9080/libertymq/api/enqueue
-```
-
-## Versions
-
-Implementation / tests performed with the latest/LTS versions of all components:
-
-- openjdk 17.0.3 2022-04-19
-- Jakarta EE 9.1
-- Apache Maven 3.8.6
-- OpenLibery 22.0.0.7
-- IBM MQ & Resource Adapter 9.3.0.0
-
-ℹ️ For convenience I'm versioning the adapter here. But you should get your specific version from [Fix Central](https://www.ibm.com/support/fixcentral/), following guidelines such as in [this procedure](https://www.ibm.com/docs/en/ibm-mq/9.3?topic=adapter-installing-resource-in-liberty) for your particular version.
-
-## Sources
-
-```text
-https://developer.ibm.com/tutorials/mq-connect-app-queue-manager-containers/
-https://www.ibm.com/docs/en/was-liberty/nd?topic=dmal-deploying-jms-applications-liberty-use-mq-messaging-provider
-https://developer.ibm.com/tutorials/mq-develop-mq-jms/
-https://aguibert.github.io/openliberty-cheat-sheet/
 ```

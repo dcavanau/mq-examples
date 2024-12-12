@@ -10,20 +10,12 @@
     <!-- Real projects should make it secure -->
     <variable name="ibmmq.username" value="app" />
     <variable name="ibmmq.password" value="passw0rd" />
-    <variable name="keystore.password" value="tru5tpassw0rd" />
+    <variable name="keystore.password" value="k3ypassw0rd" />
     <variable name="truststore.password" value="tru5tpassw0rd" />
 
-    <resourceAdapter id="wmqjmsra" location="${server.config.dir}//wmq.jakarta.jmsra.rar">
+    <resourceAdapter id="wmqjmsra" location="${server.config.dir}/wmq.jakarta.jmsra.rar">
         <classloader apiTypeVisibility="spec, ibm-api, api, third-party" />
     </resourceAdapter>
-
-    <!-- default SSL Configuration -->
-    <sslDefault sslRef="defaultSSLConfig" />
-
-    <ssl id="defaultSSLConfig"
-        keyStoreRef="defaultKeyStore"
-        trustStoreRef="defaultTrustStore"
-        sslProtocol="TLSv1.2" />
 
     <keyStore id="defaultKeyStore"
         location="client_key.p12"
@@ -35,20 +27,25 @@
         password="${truststore.password}"
         type="PKCS12" />
 
+    <ssl id="defaultSSLConfig"
+        keyStoreRef="defaultKeyStore"
+        trustStoreRef="defaultTrustStore"
+        sslProtocol="TLSv1.2" />
+
     <ssl id="mqv9_ssl_settings"
         verifyHostname="false"
         keyStoreRef="defaultKeyStore"
         securityLevel="CUSTOM"
         serverKeyAlias="ibmwebspheremqqm1"
         sslProtocol="TLSv1.2"
-        enabledCiphers="TLS_RSA_WITH_AES_256_CBC_SHA256"
+        enabledCiphers="TLS_RSA_WITH_AES_256_GCM_SHA384"
         trustStoreRef="defaultTrustStore"
         trustDefaultCerts="true">
 
         <outboundConnection
             clientCertificate="default"
             host="localhost"
-            port="1414" />
+            port="1419" />
 
     </ssl>
 
@@ -61,7 +58,7 @@
             password="${ibmmq.password}"
             queueManager="QM1"
             transportType="CLIENT"
-            sslCipherSuite="TLS_RSA_WITH_AES_256_CBC_SHA256"
+            sslCipherSuite="ANY_TLS12_OR_HIGHER"
             sslConfiguration="mqv9_ssl_settings" />
     </jmsConnectionFactory>
 
@@ -81,8 +78,12 @@
         />
     </jmsActivationSpec>
 
-    <jmsQueue id="jms/queue1" jndiName="jms/queue1">
-        <properties.wmqjmsra baseQueueName="DEV.QUEUE.1" />
+    <jmsQueue 
+        id="jms/queue1" 
+        jndiName="jms/queue1">
+
+        <properties.wmqjmsra 
+            baseQueueName="DEV.QUEUE.1" />
     </jmsQueue>
 
     <!-- END JMS CONFIGURATION -->
