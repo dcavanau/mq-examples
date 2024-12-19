@@ -53,12 +53,33 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
 
 ## Set Up MQ Server keystore and certificate
 
-1. Create the self signed certificate on the local machine
+1. Pull and start the IBM MQ docker container:
 
    ```sh
-   mkdir qm1cert
-   cd qm1cert
+   podman volume create qmdata
+   podman volume create tls-key-vol
 
+   podman pull icr.io/ibm-messaging/mq:latest
+
+   podman run -ti \
+     --entrypoint=/bin/bash \
+     --volume qmdata:/mnt/mqm \
+     --volume tls-key-vol:/etc/mqm/pki/keys/ibmwebspheremqqm1 \
+     icr.io/ibm-messaging/mq:latest
+   ```
+
+2. Change to the directory that is mounted on the volume to create digital certificates for the server
+
+   ```sh
+   cd /mnt/mqm
+   mkdir -p MQServer/certs
+   mkdir -p MQClient/certs
+   cd MQServer/certs
+   ```
+
+3. Create the self signed certificate on the server and look at its contents
+
+   ```sh
    openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -keyout QM1.key -out QM1.crt -subj "/C=US/O=IBM/CN=QM1" -nodes
    ls
 
@@ -67,77 +88,61 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
    openssl x509 -text -noout -in QM1.crt
    ```
 
-2. Create the keystore to use on the OpenLiberty client (local machine)
+4. Make the server certificate and key are visible to MQ
 
    ```sh
-   runmqakm -keydb -create -db clientkey.kdb -pw k3ypassw0rd -type pkcs12 -expire 1000 -stash
+   cp QM1.* /etc/mqm/pki/keys/ibmwebspheremqqm1/
    ```
 
-3. Import the MQ Server's public key into the client keystore
+5. Create the keystore to use on the OpenLiberty client (local machine)
 
    ```sh
-   runmqakm -cert -add -label QM1.cert -db clientkey.kdb -stashed -trust enable -file QM1.crt
+   runmqakm -keydb -create -db ../../MQClient/certs/client_key.p12 -pw tru5tpassw0rd -type pkcs12 -expire 1000 -stash
 
-   runmqakm -cert -list all -db clientkey.kdb -stashed
+   ```
+
+6. Import the MQ Server's public key into the client keystore
+
+   ```sh
+   runmqakm -cert -add -label ibmwebspheremqqm1 -db ../../MQClient/certs/client_key.p12 -pw tru5tpassw0rd -trust enable -file QM1.crt
+
+   runmqakm -cert -list all -db ../../MQClient/certs/client_key.p12 -pw tru5tpassw0rd
 
       Certificates found
    * default, - personal, ! trusted, # secret key
-   !  QM1.cert
+   !  ibmwebspheremqqm1
    ```
 
-4. Create a non-running container which creates and mounts a volume onto the container
+7. Exit the container. The certificate data will be safe in the volumes
 
-   ```sh
-   podman create --name mq-tls-config-container --mount="type=volume,src=tls-key-vol,dst=/etc/mqm/pki/keys/mykey" --user 0:0 icr.io/ibm-messaging/mq:latest
-   ```
-
-5. Copy the QM1 `.key` and `.crt` files to the directory in the container
-
-   ```sh
-   podman cp QM1.crt mq-tls-config-container:/etc/mqm/pki/keys/QM1.cert
-   podman cp QM1.key mq-tls-config-container:/etc/mqm/pki/keys/QM1.cert
-   ```
-
-6. Remove the container
-
-   ```sh
-   podman rm mq-tls-config-container
-   ```
-
-7. Start the MQ server and verify operation
-
-   ```sh
-      podman run -it \
-         --name mqtls \
-         --secret mqAdminPassword \
-         --secret mqAppPassword \
-         --env LICENSE=accept \
-         --env MQ_QMGR_NAME=QM1 \
-         --volume tls-key-vol:/etc/mqm/pki/keys/mykey" \
-         --volume qmdata:/mnt/mqm \
-         --publish 1414:1414 \
-         --publish 8443:9443 \
-         --detach \ 
-         icr.io/ibm-messaging/mq:latest
-   ```
+    ```sh
+    exit
+    podman container ls --all
+    > CONTAINER ID  IMAGE                           COMMAND     CREATED         STATUS                     PORTS                                   NAMES
+      1d57f8d01b9b  icr.io/ibm-messaging/mq:latest              24 minutes ago  Exited (0) 27 seconds ago  1414/tcp, 9157/tcp, 9415/tcp, 9443/tcp  great_einstein
+    podman container rm 1d57f8d01b9b
+    > 1d57f8d01b9b
+    ```
 
 ## MQ Queue Manager configuration in container
 
-1. Start the container
+1. Start the MQ server and verify operation
 
    ```sh
-   podman run \
-     --secret mqAdminPassword \
-     --secret mqAppPassword \
-     --env LICENSE=accept \
-     --env MQ_QMGR_NAME=QM1 \
-     --volume qmdata:/mnt/mqm \
-     --publish 1414:1414 \
-     --publish 1419:1419 \
-     --publish 8443:9443 \
-     --detach \
-     --name QM1 \
-     icr.io/ibm-messaging/mq:latest
+   podman run -it \
+   --secret mqAdminPassword \
+   --secret mqAppPassword \
+   --env LICENSE=accept \
+   --env MQ_QMGR_NAME=QM1 \
+   --volume tls-key-vol:/etc/mqm/pki/keys/ibmwebspheremqqm1 \
+   --volume qmdata:/mnt/mqm \
+   --publish 1414:1414 \
+   --publish 8443:9443 \
+   --detach \
+   --name QM1 \
+   icr.io/ibm-messaging/mq:latest
+
+   podman logs QM1
    ```
 
 2. Enter the container
@@ -154,59 +159,33 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
      Starting MQSC for queue manager QM1.
    ```
 
-4. Issue the commands to define the SSL channel
+4. Verify security has been enabled
 
    ```sh
-   DEFINE CHANNEL('DEV.SSL.SVRCONN') CHLTYPE(SVRCONN) TRPTYPE(TCP) +
-   SSLCIPH('ANY_TLS12_OR_HIGHER') +
-   SSLCAUTH(OPTIONAL) +
-   SSLPEER('') REPLACE
-
-   REFRESH SECURITY TYPE(SSL)
-   ```
-
-5. Issue the command to show the channel configuration for the channel the application will use
-
-   ```sh
-   DISPLAY CHANNEL(DEV.SSL.SVRCONN)
-   >  1 : DISPLAY CHANNEL(DEV.SSL.SVRCONN)
-    AMQ8414I: Display Channel details.
-    CHANNEL(DEV.SSL.SVRCONN)                CHLTYPE(SVRCONN)
-    ALTDATE(2024-11-22)                     ALTTIME(16.09.29)
-    CERTLABL( )                             COMPHDR(NONE)
-    COMPMSG(NONE)                           DESCR( )
-    DISCINT(0)                              HBINT(300)
-    KAINT(AUTO)                             MAXINST(999999999)
-    MAXINSTC(999999999)                     MAXMSGL(4194304)
-    MCAUSER( )                              MONCHL(QMGR)
-    RCVDATA( )                              RCVEXIT( )
-    SCYDATA( )                              SCYEXIT( )
-    SENDDATA( )                             SENDEXIT( )
-    SHARECNV(10)                            SSLCAUTH(OPTIONAL)
-    SSLCIPH(ANY_TLS12_OR_HIGHER)            SSLPEER( )
-    TRPTYPE(TCP)
+   DISPLAY CHANNEL(DEV.APP.SVRCONN)
+        1 : DISPLAY CHANNEL(DEV.APP.SVRCONN)
+   AMQ8414I: Display Channel details.
+   CHANNEL(DEV.APP.SVRCONN)                CHLTYPE(SVRCONN)
+   ALTDATE(2024-12-18)                     ALTTIME(16.21.08)
+   CERTLABL( )                             COMPHDR(NONE)
+   COMPMSG(NONE)                           DESCR( )
+   DISCINT(0)                              HBINT(300)
+   KAINT(AUTO)                             MAXINST(999999999)
+   MAXINSTC(999999999)                     MAXMSGL(4194304)
+   MCAUSER(app)                            MONCHL(QMGR)
+   RCVDATA( )                              RCVEXIT( )
+   SCYDATA( )                              SCYEXIT( )
+   SENDDATA( )                             SENDEXIT( )
+   SHARECNV(10)                            SSLCAUTH(OPTIONAL)
+   SSLCIPH(ANY_TLS12_OR_HIGHER)            SSLPEER( )
+   TRPTYPE(TCP)
    ```
 
    The **DEV.SSL.SVRCONN** channel has been configured to use the **ANY_TLS12_OR_HIGHER** CipherSpec. When the **SSLCIPH** option is set, it turns on TLS encryption for any connections to the queue manager using this channel. We will need to specify the same CipherSpec on the client side for the client and server to be able to connect and carry out the TLS handshake.
 
    The other property to note is **SSLCAUTH**, which is set to **OPTIONAL** in this case. This allows for both 1-Way and 2-Way TLS authentication. The server authentication by the client is mandatory so the server always needs a certificate. This is 1-Way authentication. If the client also has a certificate, 2-way authentication can happen. If a client provides a certificate then it will be used for authentication, however if it does not then client authentication does not happen but the connection is still allowed. We are using 1-Way authentication in this tutorial as only the server has a certificate, so our TLS configuration is set up for encryption and server authentication only. The client authentication is carried out separately using the application name and password.
 
-6. Define the MQ Listener for the SSL PORT and start it
-
-   ```sh
-   define listener(SYSTEM.LISTENER.TCP.2) trptype(TCP) control(QMGR) port(1419)
-   start listener(SYSTEM.LISTENER.TCP.2)
-   display lsstatus(*) port
-
-   AMQ8631I: Display listener status details.
-      LISTENER(SYSTEM.LISTENER.TCP.1)         STATUS(RUNNING)
-      PID(255)                                PORT(1414)
-   AMQ8631I: Display listener status details.
-      LISTENER(LISTENER.TCP.2)                STATUS(RUNNING)
-      PID(428)                                PORT(1419)
-   ```
-
-7. End the MQSC interface
+5. End the MQSC interface
 
    ```sh
    END
@@ -214,58 +193,39 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
    >
    ```
 
-8. Leave the container running and stay in the container command line prompt. It will be needed for the next section.
+6. Exit the Queue Manager container. Be sure to leave the container running.
 
-## Set up client truststore
-
-1. Change to the mounted directory and create a directory for digital certificates
+7. Create a test directory and pull the client keystore and stash files
 
    ```sh
-   cd /mnt/mqm
-   mkdir -p MQClient/certs
-   cd MQClient/certs
-   ```
+   mkdir mqcerts
+   cd mqcerts
 
-2. Use runmqakm to create a client trustStore
-
-   ```sh
-   runmqakm -keydb -create -db client_key.p12 -pw tru5tpassw0rd -type pkcs12 -expire 1000
-   ```
-
-3. Check what has been created so far
-
-   ```sh
+   podman cp QM1:/mnt/mqm/MQClient/certs/client_key.p12 client_key.p12
+   podman cp QM1:/mnt/mqm/MQClient/certs/client_key.sth client_key.sth
    ls
-    > client_key.p12
    ```
 
-4. Check the contents of the keyStore
+8. Use `amqssslc` to test the connection. You will be prompted for the `app` user's password.
 
    ```sh
-   runmqakm -cert -list all -db client_key.p12 -pw tru5tpassw0rd
-   > No certificates were found.
+   export MQSAMP_USER_ID=app
+
+   amqssslc -m QM1 -c DEV.APP.SVRCONN -x 'localhost(1414)' -k "/Users/davidcavanaugh/mqcerts/client_key.p12" -s ANY_TLS12_OR_HIGHER -l ibmwebspheremqqm1
+
+   Sample AMQSSSLC start
+   Connecting to queue manager QM1
+   Using the server connection channel DEV.APP.SVRCONN
+   on connection name localhost(1414).
+   Using SSL CipherSpec ANY_TLS12_OR_HIGHER
+   Using SSL key repository stem /Users/davidcavanaugh/mqcerts/client_key.p12
+   Certificate Label: ibmwebspheremqqm1
+   No OCSP configuration specified.
+   Enter password: ********
+   Connection established
    ```
 
-5. Add the public key certificate to the client’s trustStore
-
-   ```sh
-   runmqakm -cert -add -label ibmwebspheremqqm1 -db client_key.p12 -type pkcs12 -pw tru5tpassw0rd -trust enable -file ../../MQServer/certs/QM1.cert
-   ```
-
-6. Check the contents of the keyStore
-
-   ```sh
-   runmqakm -cert -list all -db client_key.p12 -pw tru5tpassw0rd
-   > Certificates found
-   * default, - personal, ! trusted, # secret key
-   ! ibmwebspheremqqm1
-   ```
-
-7. Exit the Queue Manager container. Be sure to leave the container running.
-
-   ```sh
-   exit
-   ```
+   This shows that a client can connect to the MQ Server using SSL/TLS security.
 
 ## Expose the client truststore to the sample application
 
@@ -275,6 +235,7 @@ Create podman secrets with secret names as “mqAdminPassword” & "mqAppPasswor
    cd ~/mq-examples/openliberty-jms-ibmmq-jarkataee9-ssl/src/main/liberty/config/resources/security
 
    podman cp QM1:/mnt/mqm/MQClient/certs/client_key.p12 client_key.p12
+   podman cp QM1:/mnt/mqm/MQClient/certs/client_key.sth client_key.sth
    ```
 
 ## Run the application

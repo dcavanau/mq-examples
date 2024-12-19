@@ -206,12 +206,6 @@ For this project you'll need to install the following requirements:
    cd MQClient/certs
    ```
 
-2. Use runmqakm to create a client trustStore
-
-   ```sh
-   runmqakm -keydb -create -db client_key.p12 -pw tru5tpassw0rd -type pkcs12 -expire 1000
-   ```
-
 3. Check what has been created so far
 
    ```sh

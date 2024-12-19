@@ -10,7 +10,7 @@
     <!-- Real projects should make it secure -->
     <variable name="ibmmq.username" value="app" />
     <variable name="ibmmq.password" value="passw0rd" />
-    <variable name="keystore.password" value="k3ypassw0rd" />
+    <variable name="keystore.password" value="tru5tpassw0rd" />
     <variable name="truststore.password" value="tru5tpassw0rd" />
 
     <resourceAdapter id="wmqjmsra" location="${server.config.dir}/wmq.jakarta.jmsra.rar">
@@ -38,20 +38,20 @@
         securityLevel="CUSTOM"
         serverKeyAlias="ibmwebspheremqqm1"
         sslProtocol="TLSv1.2"
-        enabledCiphers="TLS_RSA_WITH_AES_256_GCM_SHA384"
+        enabledCiphers="TLS_RSA_WITH_AES_128_CBC_SHA256"
         trustStoreRef="defaultTrustStore"
         trustDefaultCerts="true">
 
         <outboundConnection
             clientCertificate="default"
             host="localhost"
-            port="1419" />
+            port="1414" />
 
     </ssl>
 
     <jmsConnectionFactory jndiName="jms/wmqCF" connectionManagerRef="ConMgr6">
         <properties.wmqjmsra
-            channel="DEV.SSL.SVRCONN"
+            channel="DEV.APP.SVRCONN"
             hostName="localhost"
             port="1419"
             userName="${ibmmq.username}"
@@ -66,9 +66,9 @@
 
     <jmsActivationSpec id="libertymq/SampleListenerMDB">
         <properties.wmqjmsra
-            channel="DEV.SSL.SVRCONN"
+            channel="DEV.APP.SVRCONN"
             hostName="localhost"
-            port="1419"
+            port="1414"
             userName="${ibmmq.username}"
             password="${ibmmq.password}"
             queueManager="QM1"
