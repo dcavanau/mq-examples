@@ -5,85 +5,94 @@
         <feature>jakartaee-9.1</feature>
     </featureManager>
 
-    <!-- START JMS CONFIGURATION -->
-
     <!-- Real projects should make it secure -->
     <variable name="ibmmq.username" value="app" />
     <variable name="ibmmq.password" value="passw0rd" />
     <variable name="keystore.password" value="tru5tpassw0rd" />
     <variable name="truststore.password" value="tru5tpassw0rd" />
 
-    <resourceAdapter id="wmqjmsra" location="${server.config.dir}/wmq.jakarta.jmsra.rar">
-        <classloader apiTypeVisibility="spec, ibm-api, api, third-party" />
-    </resourceAdapter>
+    <variable name="MQ_PORT" value="1414" />
+    <variable name="MQ_HOSTNAME" value="localhost" />
+    <variable name="MQ_QUEUEMANAGER" value="QM1" />
+    <variable name="MQ_CHANNEL" value="DEV.APP.SVRCONN" />
+    <variable name="MQ_BASEQUEUE" value="DEV.QUEUE.1" />
+    <variable name="MQ_TRANSPORTTYPE" value="CLIENT" />
 
-    <keyStore id="defaultKeyStore"
+    <keyStore 
+        id="defaultKeyStore"
         location="client_key.p12"
         password="${keystore.password}"
-        type="PKCS12" />
+        type="PKCS12"
+    />
 
-    <keyStore id="defaultTrustStore"
+    <keyStore 
+        id="defaultTrustStore"
         location="client_key.p12"
         password="${truststore.password}"
-        type="PKCS12" />
+        type="PKCS12"
+    />
 
-    <ssl id="defaultSSLConfig"
-        keyStoreRef="defaultKeyStore"
-        trustStoreRef="defaultTrustStore"
-        sslProtocol="TLSv1.2" />
-
-    <ssl id="mqv9_ssl_settings"
+    <ssl 
+        id="mqv9_ssl_settings"
         verifyHostname="false"
         keyStoreRef="defaultKeyStore"
         securityLevel="CUSTOM"
         serverKeyAlias="ibmwebspheremqqm1"
         sslProtocol="TLSv1.2"
-        enabledCiphers="TLS_RSA_WITH_AES_128_CBC_SHA256"
+        enabledCiphers="ANY_TLS12_OR_HIGHER"
         trustStoreRef="defaultTrustStore"
         trustDefaultCerts="true">
 
         <outboundConnection
             clientCertificate="default"
-            host="localhost"
-            port="1414" />
+            host="${MQ_HOSTNAME}"
+            port="${MQ_PORT}" />
 
     </ssl>
 
-    <jmsConnectionFactory jndiName="jms/wmqCF" connectionManagerRef="ConMgr6">
-        <properties.wmqjmsra
-            channel="DEV.APP.SVRCONN"
-            hostName="localhost"
-            port="1419"
+    <!-- BEGIN JMS CONFIGURATION -->
+
+    <resourceAdapter id="mqJms" location="${server.config.dir}/wmq.jakarta.jmsra.rar">
+        <classloader apiTypeVisibility="spec, ibm-api, api, third-party" />
+    </resourceAdapter>
+
+    <jmsConnectionFactory jndiName="jms/cf1" connectionManagerRef="ConMgr1">
+        <properties.mqJms
+            channel="${MQ_CHANNEL}"
+            hostName="${MQ_HOSTNAME}"
+            port="${MQ_PORT}"
             userName="${ibmmq.username}"
             password="${ibmmq.password}"
-            queueManager="QM1"
-            transportType="CLIENT"
+            queueManager="${MQ_QUEUEMANAGER}"
+            transportType="${MQ_TRANSPORTTYPE}"
             sslCipherSuite="ANY_TLS12_OR_HIGHER"
             sslConfiguration="mqv9_ssl_settings" />
     </jmsConnectionFactory>
 
-    <connectionManager id="ConMgr6" maxPoolSize="10" />
+    <connectionManager id="ConMgr1" maxPoolSize="10" />
 
     <jmsActivationSpec id="libertymq/SampleListenerMDB">
-        <properties.wmqjmsra
-            channel="DEV.APP.SVRCONN"
-            hostName="localhost"
-            port="1414"
+        <properties.mqJms
+            channel="${MQ_CHANNEL}"
+            hostName="${MQ_HOSTNAME}"
+            port="${MQ_PORT}"
             userName="${ibmmq.username}"
             password="${ibmmq.password}"
-            queueManager="QM1"
-            transportType="CLIENT"
+            queueManager="${MQ_QUEUEMANAGER}"
+            transportType="${MQ_TRANSPORTTYPE}"
             destinationRef="jms/queue1"
             destinationType="jakarta.jms.Queue"
         />
     </jmsActivationSpec>
 
-    <jmsQueue 
-        id="jms/queue1" 
+    <jmsQueue
+        id="jms/queue1"
         jndiName="jms/queue1">
 
-        <properties.wmqjmsra 
-            baseQueueName="DEV.QUEUE.1" />
+        <properties.mqJms
+            baseQueueName="${MQ_BASEQUEUE}"
+            baseQueueManagerName="${MQ_QUEUEMANAGER}" 
+        />
     </jmsQueue>
 
     <!-- END JMS CONFIGURATION -->
@@ -99,5 +108,10 @@
     <applicationManager autoExpand="true" />
 
     <webApplication contextRoot="/libertymq" location="libertymq.war" />
+
+    <ssl 
+        id="defaultSSLConfig"
+        trustDefaultCerts="true"
+    />
 
 </server>

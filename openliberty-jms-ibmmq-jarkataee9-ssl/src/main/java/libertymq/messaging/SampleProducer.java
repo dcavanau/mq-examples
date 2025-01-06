@@ -11,7 +11,7 @@ import jakarta.jms.Queue;
 public class SampleProducer {
 
   @Inject
-  @JMSConnectionFactory("jms/wmqCF")
+  @JMSConnectionFactory("jms/cf1")
   JMSContext context;
 
   @Resource(lookup = "jms/queue1")
