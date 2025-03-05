@@ -80,6 +80,8 @@
             password="${ibmmq.password}"
             queueManager="${MQ_QUEUEMANAGER}"
             transportType="${MQ_TRANSPORTTYPE}"
+            sslCipherSuite="ANY_TLS12_OR_HIGHER"
+            sslConfiguration="mqv9_ssl_settings"
             destinationRef="jms/queue1"
             destinationType="jakarta.jms.Queue"
         />
